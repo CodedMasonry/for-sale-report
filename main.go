@@ -2,36 +2,30 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
 )
 
-func getLocations() (locations []string) {
-	locations = make([]string, 0)
+func main() {
+	// load env file if exist
+	godotenv.Load()
 
-	// Random lot from zillow
-	locations = append(locations, "2074 Hard Rd Columbus OH 43235")
+	// setup MLS
+	MLSUser := os.Getenv("MLS_USER")
+	MLSPass := os.Getenv("MLS_PASS")
+	mls := BuildMLS(MLSUser, MLSPass)
+	defer mls.Close()
 
-	return
-}
-
-func addressDetails(addr string) string {
-	return ""
-}
-
-func fetchLocationDetails(locations []string) (details []string) {
-	details = make([]string, len(locations))
-
-	for _, addr := range locations {
-		details = append(details, addressDetails(addr))
+	result, err := mls.AddressStatus("6690 Mooney St #H1-13, Dublin, OH 43017")
+	if err != nil {
+		log.Panic(err)
 	}
 
-	return
-}
-
-func main() {
-	locations := getLocations()
-	details := fetchLocationDetails(locations)
-
-	for _, item := range details {
-		fmt.Printf("item: %v\n", item)
+	if result == 3 {
+		fmt.Printf("Open")
+	} else {
+		fmt.Printf("Closed")
 	}
 }

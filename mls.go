@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -16,16 +15,21 @@ type MLS struct {
 	cancel context.CancelFunc
 }
 
-type addrStatus int
+type AddrStatus int
 
 const (
-	addrError      addrStatus = iota // 0
+	addrError      AddrStatus = iota // 0
 	addrClosed                       // 1
 	addrComingSoon                   // 2
 	addrActive                       // 3
 )
 
-func BuildMLS(user string, pass string) (mls MLS) {
+type PersonStatus struct {
+	id     int
+	status AddrStatus
+}
+
+func BuildMLS(user string, pass string) (mls *MLS, err error) {
 	// Create context
 	ctx, cancel := chromedp.NewContext(context.Background())
 
@@ -33,16 +37,16 @@ func BuildMLS(user string, pass string) (mls MLS) {
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 
 	// Login with chromedp and return the context to control it
-	err := loginAndGetCookies(ctx, user, pass)
+	err = loginAndGetCookies(ctx, user, pass)
 	if err != nil {
 		cancel()
-		log.Panic(err)
+		return nil, err
 	}
 
-	return MLS{
+	return &MLS{
 		ctx,
 		cancel,
-	}
+	}, nil
 }
 
 func loginAndGetCookies(ctx context.Context, user string, pass string) error {
@@ -71,11 +75,7 @@ func loginAndGetCookies(ctx context.Context, user string, pass string) error {
 	return err
 }
 
-func (mls *MLS) Close() {
-	mls.cancel()
-}
-
-func (mls *MLS) AddressStatus(addr string) (addrStatus, error) {
+func (mls *MLS) AddressStatus(addr string) (AddrStatus, error) {
 	// setup URL
 	addr = strings.ReplaceAll(addr, " ", "+")
 	addr = strings.ReplaceAll(addr, ",", "")
@@ -127,7 +127,7 @@ func (mls *MLS) AddressStatus(addr string) (addrStatus, error) {
 
 	// If no results, it failed
 	if len(data.D.Results) == 0 {
-		return addrError, fmt.Errorf("No results found")
+		return addrError, fmt.Errorf("No results found - %s", addr)
 	}
 
 	// Get the status
@@ -144,4 +144,41 @@ func (mls *MLS) AddressStatus(addr string) (addrStatus, error) {
 	default:
 		return addrClosed, nil
 	}
+}
+
+func (mls *MLS) LookupPerson(person Person) (*PersonStatus, error) {
+	finalStatus := addrClosed
+	var finalErr error
+	for _, addr := range person.Addresses {
+		status, err := mls.AddressStatus(addr.ToString())
+
+		// Is active, so we know it is live
+		if status == addrActive {
+			finalStatus = status
+			break
+		}
+		// Coming soon means it is just recently listed, good to know
+		if status == addrComingSoon {
+			finalStatus = status
+			continue
+		}
+		// Handle error
+		if err != nil {
+			finalErr = err
+		}
+	}
+
+	// one of the addresses could fail, but if none work then it is invalid address
+	if finalErr != nil {
+		return nil, finalErr
+	}
+
+	return &PersonStatus{
+		id:     person.ID,
+		status: finalStatus,
+	}, nil
+}
+
+func (mls *MLS) Close() {
+	mls.cancel()
 }

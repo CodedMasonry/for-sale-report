@@ -20,7 +20,8 @@ type FUB struct {
 
 // Only next is cared about because offset context is handled internally. Communicates end of list
 type PeopleMetadata struct {
-	Next *string `json:"next"`
+	Next  *string `json:"next"`
+	Total int     `json:"total"`
 }
 
 type PersonAddress struct {
@@ -58,33 +59,6 @@ func NewFUB(token string, smartListId string) FUB {
 	}
 }
 
-// Offset allows for recursion internally if response is paginated.
-// Internal function for GetPeople
-func (f *FUB) GetPeoplePage(offset int) (people []Person, isEnd bool, err error) {
-	url := "https://api.followupboss.com/v1/people?sort=created&limit=10&offset=" + strconv.Itoa(offset) + "&includeTrash=false&includeUnclaimed=true&smartListId=" + strconv.Itoa(f.sellerListId)
-
-	req, err := f.newRequest("GET", url, nil)
-	if err != nil {
-		return nil, false, err
-	}
-
-	res, err := f.client.Do(req)
-	if err != nil {
-		return nil, false, err
-	}
-	defer res.Body.Close()
-
-	var jsonRes PeopleResponse
-	err = json.NewDecoder(res.Body).Decode(&jsonRes)
-	if err != nil {
-		return nil, false, err
-	}
-
-	people = jsonRes.People
-	isEnd = jsonRes.Metadata.Next == nil
-	return people, isEnd, nil
-}
-
 func (f *FUB) newRequest(method string, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
@@ -104,6 +78,34 @@ func (f *FUB) newRequest(method string, url string, body io.Reader) (*http.Reque
 	}
 
 	return req, nil
+}
+
+// Offset allows for recursion internally if response is paginated.
+// Internal function for GetPeople
+func (f *FUB) GetPeoplePage(offset int) (people []Person, isEnd bool, err error) {
+	url := "https://api.followupboss.com/v1/people?sort=created&limit=50&offset=" + strconv.Itoa(offset) + "&includeTrash=false&includeUnclaimed=true&smartListId=" + strconv.Itoa(f.sellerListId)
+
+	req, err := f.newRequest("GET", url, nil)
+	if err != nil {
+		return nil, false, err
+	}
+
+	res, err := f.client.Do(req)
+	if err != nil {
+		return nil, false, err
+	}
+	defer res.Body.Close()
+
+	var jsonRes PeopleResponse
+	err = json.NewDecoder(res.Body).Decode(&jsonRes)
+	if err != nil {
+		return nil, false, err
+	}
+
+	people = jsonRes.People
+	fmt.Printf("[INFO] %v / %v people", offset, jsonRes.Metadata.Total)
+	isEnd = jsonRes.Metadata.Next == nil
+	return people, isEnd, nil
 }
 
 // internal version of [SetPersonHasSold] for handling zillow tag
@@ -156,6 +158,7 @@ func (f *FUB) SetPersonHasSold(id int) error {
 	}
 
 	if strings.Contains(string(body), "Zillow") {
+		log.Printf("%v: Trying to handle Zillow Lead", id)
 		return f.setZillowPersonHasSold(id)
 	} else {
 		return fmt.Errorf("%v: Failed to set stage to %v - %v", id, FUBExpiredZillowStageName, body)
@@ -163,5 +166,10 @@ func (f *FUB) SetPersonHasSold(id int) error {
 }
 
 func (addr *PersonAddress) ToString() string {
+	// Invalid address
+	if addr.Street == "" {
+		return ""
+	}
+
 	return fmt.Sprintf("%s, %s", addr.Street, addr.City)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/joho/godotenv"
@@ -58,7 +59,6 @@ func main() {
 		if err != nil {
 			log.Panic(err)
 		}
-		log.Printf("[INFO] Got Page %v", offset)
 
 		// Parse people from current list
 		for _, person := range currentPeople {
@@ -74,7 +74,6 @@ func main() {
 				continue
 			}
 
-			log.Printf("[INFO] %v: Successful lookup", person.ID)
 			lookupResults = append(lookupResults, status)
 		}
 
@@ -82,6 +81,8 @@ func main() {
 		handleLookupResults(&fub, lookupResults)
 
 		// Increment
-		offset += 10
+		offset += 50
 	}
+
+	fmt.Print("Finished Program\n")
 }

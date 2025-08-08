@@ -25,7 +25,7 @@ func BuildMLS(user string, pass string) (mls *MLS, err error) {
 	ctx, cancel := chromedp.NewContext(context.Background())
 
 	// Set a timeout
-	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 600*time.Second)
 
 	// Login with chromedp and return the context to control it
 	err = loginAndGetCookies(ctx, user, pass)

@@ -110,7 +110,7 @@ func (f *FUB) GetPeoplePage(offset int) (people []Person, isEnd bool, err error)
 
 // internal version of [SetPersonHasSold] for handling zillow tag
 func (f *FUB) setZillowPersonHasSold(id int) error {
-	url := "https://api.followupboss.com/v1/people/" + strconv.Itoa(id) + "?mergeTags=false"
+	url := "https://api.followupboss.com/v1/people/" + strconv.Itoa(id) + "?mergeTags=true"
 	payload := strings.NewReader("{\"tags\":[\"Expired Lead\"]}")
 
 	req, err := f.newRequest("PUT", url, payload)

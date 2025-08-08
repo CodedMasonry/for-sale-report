@@ -111,7 +111,7 @@ func (f *FUB) GetPeoplePage(offset int) (people []Person, isEnd bool, err error)
 // internal version of [SetPersonHasSold] for handling zillow tag
 func (f *FUB) setZillowPersonHasSold(id int) error {
 	url := "https://api.followupboss.com/v1/people/" + strconv.Itoa(id) + "?mergeTags=false"
-	payload := strings.NewReader("{\"stage\":\"" + FUBExpiredZillowStageName + "\",\"tags\":[\"Expired Lead\"]}")
+	payload := strings.NewReader("{\"tags\":[\"Expired Lead\"]}")
 
 	req, err := f.newRequest("PUT", url, payload)
 	if err != nil {
@@ -129,13 +129,13 @@ func (f *FUB) setZillowPersonHasSold(id int) error {
 	}
 	// If neither original or zillow tag works, bigger problems
 	body, err := io.ReadAll(res.Body)
-	return fmt.Errorf("%v: Failed to set stage to %v - %v", id, FUBExpiredZillowStageName, body)
+	return fmt.Errorf("%v: Failed to set tag %v", id, body)
 }
 
 // Sets [id]'s stage to [FUBExpiredStageName]
 func (f *FUB) SetPersonHasSold(id int) error {
 	url := "https://api.followupboss.com/v1/people/" + strconv.Itoa(id) + "?mergeTags=true"
-	payload := strings.NewReader("{\"stage\":\"" + FUBExpiredStageName + "\",\"tags\":[\"Expired Lead\"]}")
+	payload := strings.NewReader("{\"tags\":[\"Expired Lead\"]}")
 
 	req, err := f.newRequest("PUT", url, payload)
 	if err != nil {
@@ -161,7 +161,7 @@ func (f *FUB) SetPersonHasSold(id int) error {
 		log.Printf("%v: Trying to handle Zillow Lead", id)
 		return f.setZillowPersonHasSold(id)
 	} else {
-		return fmt.Errorf("%v: Failed to set stage to %v - %v", id, FUBExpiredZillowStageName, body)
+		return fmt.Errorf("%v: Failed to set tag - %v", id, body)
 	}
 }
 

@@ -15,18 +15,9 @@ type MLS struct {
 	cancel context.CancelFunc
 }
 
-type AddrStatus int
-
-const (
-	addrError      AddrStatus = iota // 0
-	addrClosed                       // 1
-	addrComingSoon                   // 2
-	addrActive                       // 3
-)
-
 type PersonStatus struct {
-	id     int
-	status AddrStatus
+	id      int
+	hasSold bool
 }
 
 func BuildMLS(user string, pass string) (mls *MLS, err error) {
@@ -75,7 +66,36 @@ func loginAndGetCookies(ctx context.Context, user string, pass string) error {
 	return err
 }
 
-func (mls *MLS) AddressStatus(addr string) (AddrStatus, error) {
+// Gets the list of dates the address has been listed
+func (mls *MLS) mostRecentlySold(id string, mlsId string) (time.Time, error) {
+	url := MLS_SEARCH_HISTORY_URL_BASE
+	url = strings.Replace(url, "{id}", id, 1)
+	url = strings.Replace(url, "{mlsid}", mlsId, 1)
+
+	var date string
+	err := chromedp.Run(mls.ctx,
+		chromedp.Navigate(url),
+
+		// Wait for table to load (adjust selector if needed)
+		chromedp.WaitVisible(`tbody`, chromedp.ByQuery),
+
+		// Extract the text of the first date in the table
+		chromedp.Text(`tbody tr td.date`, &date, chromedp.ByQuery),
+	)
+
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	// Parse date into time.Time
+	return time.Parse("01/02/2006", date)
+}
+
+func (mls *MLS) AddressHasSoldSince(addr string, time time.Time) (bool, error) {
+	/*
+	 * First, get the Id & MlsId from the address
+	 */
+
 	// setup URL
 	addr = strings.ReplaceAll(addr, " ", "+")
 	addr = strings.ReplaceAll(addr, ",", "")
@@ -95,7 +115,7 @@ func (mls *MLS) AddressStatus(addr string) (AddrStatus, error) {
 		chromedp.Text(`pre`, &jsonString, chromedp.ByQuery),
 	)
 	if err != nil {
-		return addrError, err
+		return false, err
 	}
 
 	// Strip out the `lookupCallback(...)` wrapper to extract the raw json
@@ -105,7 +125,7 @@ func (mls *MLS) AddressStatus(addr string) (AddrStatus, error) {
 	start := strings.Index(jsonString, prefix)
 	end := strings.LastIndex(jsonString, suffix)
 	if start == -1 || end == -1 {
-		return addrError, fmt.Errorf("Invalid JSON wrapper")
+		return false, fmt.Errorf("Invalid JSON wrapper")
 	}
 
 	cleanJSON := jsonString[start+len(prefix) : end]
@@ -114,7 +134,8 @@ func (mls *MLS) AddressStatus(addr string) (AddrStatus, error) {
 	type LookupResponse struct {
 		D struct {
 			Results []struct {
-				Name string `json:"Name"`
+				Id    string `json:"Id"`
+				MlsId string `json:"MlsId"`
 			} `json:"Results"`
 		} `json:"D"`
 	}
@@ -122,60 +143,40 @@ func (mls *MLS) AddressStatus(addr string) (AddrStatus, error) {
 	var data LookupResponse
 	err = json.Unmarshal([]byte(cleanJSON), &data)
 	if err != nil {
-		return addrError, fmt.Errorf("Failed to parse JSON: %v", err)
+		return false, fmt.Errorf("Failed to parse JSON: %v", err)
 	}
 
 	// If no results, it failed
 	if len(data.D.Results) == 0 {
-		return addrError, fmt.Errorf("No results found - %s", addr)
+		return false, fmt.Errorf("No results found - %s", addr)
 	}
 
-	// Get the status
-	status := strings.Split(data.D.Results[0].Name, "(")[1]
-	status = status[0 : len(status)-1]
-	status = strings.ToLower(status)
+	/*
+	 * Second, use Id & MlsId to see whether the address has been listed since [time]
+	 */
 
-	// Handle status
-	switch status {
-	case "active":
-		return addrActive, nil
-	case "coming soon":
-		return addrComingSoon, nil
-	default:
-		return addrClosed, nil
+	// If address has been sold after [time]
+	recentlySold, err := mls.mostRecentlySold(data.D.Results[0].Id, data.D.Results[0].MlsId)
+	if err != nil {
+		return false, err
+	}
+
+	if recentlySold.After(time) {
+		return true, nil
+	} else {
+		return false, nil
 	}
 }
 
-func (mls *MLS) LookupPerson(person Person) (*PersonStatus, error) {
-	finalStatus := addrClosed
-	var finalErr error
-	for _, addr := range person.Addresses {
-		status, err := mls.AddressStatus(addr.ToString())
-
-		// Is active, so we know it is live
-		if status == addrActive {
-			finalStatus = status
-			break
-		}
-		// Coming soon means it is just recently listed, good to know
-		if status == addrComingSoon {
-			finalStatus = status
-			continue
-		}
-		// Handle error
-		if err != nil {
-			finalErr = err
-		}
-	}
-
-	// one of the addresses could fail, but if none work then it is invalid address
-	if finalErr != nil {
-		return nil, finalErr
+func (mls *MLS) PersonHasSoldSince(person Person, time time.Time) (*PersonStatus, error) {
+	hasSold, err := mls.AddressHasSoldSince(person.Addresses[0].ToString(), time)
+	if err != nil {
+		return nil, err
 	}
 
 	return &PersonStatus{
-		id:     person.ID,
-		status: finalStatus,
+		id:      person.ID,
+		hasSold: hasSold,
 	}, nil
 }
 

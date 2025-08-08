@@ -1,22 +1,32 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"os"
 
 	"github.com/joho/godotenv"
 )
 
+func handleLookupResults(fub *FUB, results []*PersonStatus) {
+	for _, person := range results {
+		// Don't do anything with people who have sold
+		if !person.hasSold {
+			continue
+		}
+
+		err := fub.SetPersonHasSold(person.id)
+		if err != nil {
+			log.Panic(err)
+		}
+
+		log.Printf("[INFO] %v: Stage updated - Has Sold", person.id)
+	}
+}
+
 func main() {
 	// load env file if exist
 	godotenv.Load()
-
-	// ENV
-	FUBApiKey := os.Getenv("FUB_KEY")
-	FUBSellerSmartlistId := os.Getenv("FUB_SMARTLIST_SELLER_ID")
-	MLSUser := os.Getenv("MLS_USER")
-	MLSPass := os.Getenv("MLS_PASS")
+	// Set global varialbes from ENV
+	initEnv()
 
 	fub := NewFUB(FUBApiKey, FUBSellerSmartlistId)
 	mls, err := BuildMLS(MLSUser, MLSPass)
@@ -26,46 +36,52 @@ func main() {
 	defer mls.Close()
 
 	// Loop Context
-	var currentPeople []Person
 	isEnd := false
 	offset := 0
 
-	// Loop result
-	lookupResults := make([]*PersonStatus, 0)
-
 	for {
 		// Break context
-		if isEnd || offset == 1 {
+		if isEnd {
 			break
 		}
 
+		// Successful lookups to handle later
+		lookupResults := make([]*PersonStatus, 0)
+
+		/*
+		 * Handle parsing a page of people
+		 */
+
 		// Fetch current people
+		var currentPeople []Person
 		currentPeople, isEnd, err = fub.GetPeoplePage(offset)
 		if err != nil {
 			log.Panic(err)
 		}
+		log.Printf("[INFO] Got Page %v", offset)
 
 		// Parse people from current list
 		for _, person := range currentPeople {
 			// Skip invalid people
 			if len(person.Addresses) == 0 {
-				log.Printf("[WARN] Invalid User: %v - No Addresses", person.ID)
+				log.Printf("[WARN] %v: Invalid User - No Addresses", person.ID)
 				continue
 			}
 
-			status, err := mls.LookupPerson(person)
+			status, err := mls.PersonHasSoldSince(person, person.CreatedAt)
 			if err != nil {
-				log.Printf("[WARN] %v", person.ID, err)
+				log.Printf("[WARN] %v: %v", person.ID, err)
 				continue
 			}
+
+			log.Printf("[INFO] %v: Successful lookup", person.ID)
 			lookupResults = append(lookupResults, status)
 		}
 
-		// Increment
-		offset++
-	}
+		//Handle successful lookupResults
+		handleLookupResults(&fub, lookupResults)
 
-	for _, v := range lookupResults {
-		fmt.Printf("%v - %v\n", v.id, v.status)
+		// Increment
+		offset += 10
 	}
 }

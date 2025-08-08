@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type FUB struct {
@@ -16,14 +18,9 @@ type FUB struct {
 	client       *http.Client
 }
 
+// Only next is cared about because offset context is handled internally. Communicates end of list
 type PeopleMetadata struct {
-	Collection string `json:"collection"`
-	Offset     int    `json:"offset"`
-	Limit      int    `json:"limit"`
-	Total      int    `json:"total"`
-	Next       string `json:"next"`
-	NextLink   string `json:"nextLink"`
-	Notice     string `json:"notice"`
+	Next *string `json:"next"`
 }
 
 type PersonAddress struct {
@@ -37,6 +34,7 @@ type PersonAddress struct {
 
 type Person struct {
 	ID        int             `json:"id"`
+	CreatedAt time.Time       `json:"created"`
 	Addresses []PersonAddress `json:"addresses"`
 }
 
@@ -83,7 +81,7 @@ func (f *FUB) GetPeoplePage(offset int) (people []Person, isEnd bool, err error)
 	}
 
 	people = jsonRes.People
-	isEnd = jsonRes.Metadata.Next == "null"
+	isEnd = jsonRes.Metadata.Next == nil
 	return people, isEnd, nil
 }
 
@@ -101,7 +99,67 @@ func (f *FUB) newRequest(method string, url string, body io.Reader) (*http.Reque
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("authorization", "Basic "+auth)
 
+	if body != nil && (method == "POST" || method == "PUT" || method == "PATCH") {
+		req.Header.Add("Content-Type", "application/json")
+	}
+
 	return req, nil
+}
+
+// internal version of [SetPersonHasSold] for handling zillow tag
+func (f *FUB) setZillowPersonHasSold(id int) error {
+	url := "https://api.followupboss.com/v1/people/" + strconv.Itoa(id) + "?mergeTags=false"
+	payload := strings.NewReader("{\"stage\":\"" + FUBExpiredZillowStageName + "\",\"tags\":[\"Expired Lead\"]}")
+
+	req, err := f.newRequest("PUT", url, payload)
+	if err != nil {
+		return err
+	}
+
+	res, err := f.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode == 200 {
+		return nil
+	}
+	// If neither original or zillow tag works, bigger problems
+	body, err := io.ReadAll(res.Body)
+	return fmt.Errorf("%v: Failed to set stage to %v - %v", id, FUBExpiredZillowStageName, body)
+}
+
+// Sets [id]'s stage to [FUBExpiredStageName]
+func (f *FUB) SetPersonHasSold(id int) error {
+	url := "https://api.followupboss.com/v1/people/" + strconv.Itoa(id) + "?mergeTags=true"
+	payload := strings.NewReader("{\"stage\":\"" + FUBExpiredStageName + "\"}")
+
+	req, err := f.newRequest("PUT", url, payload)
+	if err != nil {
+		return err
+	}
+
+	res, err := f.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode == 200 {
+		return nil
+	}
+	// If not a success, see if zillow lead
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if strings.Contains(string(body), "Zillow") {
+		return f.setZillowPersonHasSold(id)
+	} else {
+		return fmt.Errorf("%v: Failed to set stage to %v - %v", id, FUBExpiredZillowStageName, body)
+	}
 }
 
 func (addr *PersonAddress) ToString() string {

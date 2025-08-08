@@ -135,7 +135,7 @@ func (f *FUB) setZillowPersonHasSold(id int) error {
 // Sets [id]'s stage to [FUBExpiredStageName]
 func (f *FUB) SetPersonHasSold(id int) error {
 	url := "https://api.followupboss.com/v1/people/" + strconv.Itoa(id) + "?mergeTags=true"
-	payload := strings.NewReader("{\"stage\":\"" + FUBExpiredStageName + "\"}")
+	payload := strings.NewReader("{\"stage\":\"" + FUBExpiredStageName + "\",\"tags\":[\"Expired Lead\"]}")
 
 	req, err := f.newRequest("PUT", url, payload)
 	if err != nil {

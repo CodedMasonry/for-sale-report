@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-
-	"github.com/joho/godotenv"
 )
 
 func handleLookupResults(fub *FUB, results []int) {
@@ -19,13 +17,10 @@ func handleLookupResults(fub *FUB, results []int) {
 }
 
 func main() {
-	// load env file if exist
-	godotenv.Load()
-	// Set global varialbes from ENV
-	initEnv()
+	initConfig()
 
-	fub := NewFUB(FUBApiKey, FUBSellerSmartlistId)
-	mls, err := BuildMLS(MLSUser, MLSPass)
+	fub := NewFUB(AppConfig.FUB.APIKey, AppConfig.FUB.SellerSmartlistID)
+	mls, err := BuildMLS(AppConfig.MLS.User, AppConfig.MLS.Pass)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -52,10 +47,7 @@ func main() {
 			log.Panic(err)
 		}
 
-		// Id's of people who have sold
 		haveSoldIds := make([]int, 0)
-
-		// Parse people from current list
 		for _, person := range currentPeople {
 			// Skip invalid people
 			if len(person.Addresses) == 0 {
@@ -63,7 +55,7 @@ func main() {
 				continue
 			}
 
-			// Skip excluded people
+			// Skip excluded stages
 			if fub.PersonIsExcluded(&person) {
 				continue
 			}

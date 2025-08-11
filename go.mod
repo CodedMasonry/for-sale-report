@@ -5,6 +5,7 @@ go 1.24.5
 require github.com/joho/godotenv v1.5.1
 
 require (
+	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/chromedp/cdproto v0.0.0-20250803210736-d308e07a266d // indirect
 	github.com/chromedp/chromedp v0.14.1 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect

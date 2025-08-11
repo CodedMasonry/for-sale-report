@@ -169,7 +169,7 @@ func (f *FUB) SetPersonHasSold(id int) error {
 
 func (fub *FUB) PersonIsExcluded(person *Person) bool {
 	// If person.stage is an excluded stage
-	return slices.Contains(FUBExcludedStages, person.Stage)
+	return slices.Contains(AppConfig.FUB.ExcludedStages, person.Stage)
 }
 
 func (addr *PersonAddress) ToString() string {

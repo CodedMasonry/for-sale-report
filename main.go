@@ -7,19 +7,14 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func handleLookupResults(fub *FUB, results []*PersonStatus) {
+func handleLookupResults(fub *FUB, results []int) {
 	for _, person := range results {
-		// Don't do anything with people who have sold
-		if !person.hasSold {
-			continue
-		}
-
-		err := fub.SetPersonHasSold(person.id)
+		err := fub.SetPersonHasSold(person)
 		if err != nil {
 			log.Panic(err)
 		}
 
-		log.Printf("[INFO] %v: Stage updated - Has Sold", person.id)
+		log.Printf("[INFO] %v: Stage updated - Has Sold", person)
 	}
 }
 
@@ -46,9 +41,6 @@ func main() {
 			break
 		}
 
-		// Successful lookups to handle later
-		lookupResults := make([]*PersonStatus, 0)
-
 		/*
 		 * Handle parsing a page of people
 		 */
@@ -59,6 +51,9 @@ func main() {
 		if err != nil {
 			log.Panic(err)
 		}
+
+		// Id's of people who have sold
+		haveSoldIds := make([]int, 0)
 
 		// Parse people from current list
 		for _, person := range currentPeople {
@@ -79,11 +74,13 @@ func main() {
 				continue
 			}
 
-			lookupResults = append(lookupResults, status)
+			if status.hasSold {
+				haveSoldIds = append(haveSoldIds, status.id)
+			}
 		}
 
 		//Handle successful lookupResults
-		handleLookupResults(&fub, lookupResults)
+		handleLookupResults(&fub, haveSoldIds)
 
 		// Increment
 		offset += 50

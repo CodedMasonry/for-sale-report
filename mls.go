@@ -169,6 +169,7 @@ func (mls *MLS) AddressHasSoldSince(addr string, time time.Time) (bool, error) {
 }
 
 func (mls *MLS) PersonHasSoldSince(person Person, time time.Time) (*PersonStatus, error) {
+
 	hasSold, err := mls.AddressHasSoldSince(person.Addresses[0].ToString(), time)
 	if err != nil {
 		return nil, err

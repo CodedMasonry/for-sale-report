@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -36,6 +37,7 @@ type PersonAddress struct {
 type Person struct {
 	ID        int             `json:"id"`
 	CreatedAt time.Time       `json:"created"`
+	Stage     string          `json:"stage"`
 	Addresses []PersonAddress `json:"addresses"`
 }
 
@@ -83,7 +85,7 @@ func (f *FUB) newRequest(method string, url string, body io.Reader) (*http.Reque
 // Offset allows for recursion internally if response is paginated.
 // Internal function for GetPeople
 func (f *FUB) GetPeoplePage(offset int) (people []Person, isEnd bool, err error) {
-	url := "https://api.followupboss.com/v1/people?sort=created&limit=50&offset=" + strconv.Itoa(offset) + "&includeTrash=false&includeUnclaimed=true&smartListId=" + strconv.Itoa(f.sellerListId)
+	url := "https://api.followupboss.com/v1/people?sort=created&limit=50&offset=" + strconv.Itoa(offset) + "&includeTrash=false&includeUnclaimed=true&fields=id%2Ccreated%2Cstage%2Caddresses&smartListId=" + strconv.Itoa(f.sellerListId)
 
 	req, err := f.newRequest("GET", url, nil)
 	if err != nil {
@@ -163,6 +165,11 @@ func (f *FUB) SetPersonHasSold(id int) error {
 	} else {
 		return fmt.Errorf("%v: Failed to set tag - %v", id, body)
 	}
+}
+
+func (fub *FUB) PersonIsExcluded(person *Person) bool {
+	// If person.stage is an excluded stage
+	return slices.Contains(FUBExcludedStages, person.Stage)
 }
 
 func (addr *PersonAddress) ToString() string {

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 )
 
 // MLS
@@ -20,6 +21,7 @@ const FUB_SYSTEM_KEY = "e50150b78203e92245f6407fdea50dab" // X-System-Key
 var (
 	FUBApiKey            string
 	FUBSellerSmartlistId string
+	FUBExcludedStages    []string
 	MLSUser              string
 	MLSPass              string
 )
@@ -34,8 +36,15 @@ func getEnv(key string) string {
 }
 
 func initEnv() {
+	// FUB variables
 	FUBApiKey = getEnv("FUB_KEY")
 	FUBSellerSmartlistId = getEnv("FUB_SMARTLIST_SELLER_ID")
+	FUBExcludedStages = strings.Split(getEnv("FUB_EXCLUDED_STAGES"), ",")
+	for i, v := range FUBExcludedStages {
+		FUBExcludedStages[i] = strings.TrimSpace(v)
+	}
+
+	// MLS variables
 	MLSUser = getEnv("MLS_USER")
 	MLSPass = getEnv("MLS_PASS")
 }

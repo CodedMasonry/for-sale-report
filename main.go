@@ -68,6 +68,11 @@ func main() {
 				continue
 			}
 
+			// Skip excluded people
+			if fub.PersonIsExcluded(&person) {
+				continue
+			}
+
 			status, err := mls.PersonHasSoldSince(person, person.CreatedAt)
 			if err != nil {
 				log.Printf("[WARN] %v: %v", person.ID, err)

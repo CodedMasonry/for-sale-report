@@ -19,6 +19,13 @@ func handleLookupResults(fub *FUB, results []int) {
 func main() {
 	initConfig()
 
+	// Confirm SMTP server is reachable
+	err := VerifySMTPAuth(AppConfig.SMTP.Host, AppConfig.SMTP.Port, AppConfig.SMTP.User, AppConfig.SMTP.Pass)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Init services used in main loop
 	fub := NewFUB(AppConfig.FUB.APIKey, AppConfig.FUB.SellerSmartlistID)
 	mls, err := BuildMLS(AppConfig.MLS.User, AppConfig.MLS.Pass)
 	if err != nil {
@@ -29,6 +36,8 @@ func main() {
 	// Loop Context
 	isEnd := false
 	offset := 0
+	// Final context for sending out email
+	updatedPeople := make([]Person, 0)
 
 	for {
 		// Break context
@@ -68,15 +77,20 @@ func main() {
 
 			if status.hasSold {
 				haveSoldIds = append(haveSoldIds, status.id)
+				updatedPeople = append(updatedPeople, person)
 			}
 		}
 
-		//Handle successful lookupResults
+		// Handle successful lookupResults
+		// Use small subset instead of doing them all at the end to avoid flooding FUB
 		handleLookupResults(&fub, haveSoldIds)
 
 		// Increment
 		offset += 50
 	}
+
+	// Send out email report
+	panic("Add email report thingy")
 
 	fmt.Print("Finished Program\n")
 }

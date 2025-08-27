@@ -86,11 +86,14 @@ func main() {
 		handleLookupResults(&fub, haveSoldIds)
 
 		// Increment
-		offset += 50
+		offset += FUB_BUFFFER_AMOUNT
 	}
 
 	// Send out email report
-	panic("Add email report thingy")
+	emailSubject, emailBody := GenerateEmailReportBody(updatedPeople)
+	if err := SendEmailReport(emailSubject, emailBody); err != nil {
+		log.Fatal(err)
+	}
 
 	fmt.Print("Finished Program\n")
 }

@@ -20,6 +20,7 @@ const MLS_SEARCH_HISTORY_URL_BASE = "https://cr.flexmls.com/cgi-bin/mainmenu.cgi
 // FollowUpBoss
 const FUB_SYSTEM_HEADER = "ForSaleReport"                 // X-System
 const FUB_SYSTEM_KEY = "e50150b78203e92245f6407fdea50dab" // X-System-Key
+const FUB_BUFFFER_AMOUNT = 100                            // How many to get per request
 
 // Config represents the application configuration
 type Config struct {
@@ -49,6 +50,7 @@ type SMTPConfig struct {
 	To   string `toml:"to"`
 	Host string `toml:"host"`
 	Port string `toml:"port"`
+	Cert string `toml:"cert"`
 }
 
 // Global configuration instance
@@ -73,6 +75,8 @@ func getDefaultConfig() Config {
 			To:   "",          // Required - will be empty in default config
 			Host: "127.0.0.1", // Default value
 			Port: "1025",      // Default value
+			Cert: `-----BEGIN CERTIFICATE-----
+-----END CERTIFICATE-----`, // Default empty certificate template
 		},
 	}
 }
@@ -153,6 +157,12 @@ func validateConfig(config *Config) error {
 		missingFields = append(missingFields, "smtp.to")
 	}
 
+	// Note: cert is optional, so we don't validate it as required
+	// If you want to make it required, uncomment the following:
+	// if config.SMTP.Cert == "" {
+	//     missingFields = append(missingFields, "smtp.cert")
+	// }
+
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing required configuration fields: %s", strings.Join(missingFields, ", "))
 	}
@@ -166,6 +176,9 @@ func populateGlobalConfig(config *Config) {
 	for i, stage := range config.FUB.ExcludedStages {
 		config.FUB.ExcludedStages[i] = strings.TrimSpace(stage)
 	}
+
+	// Trim whitespace from certificate (in case there are extra spaces)
+	config.SMTP.Cert = strings.TrimSpace(config.SMTP.Cert)
 
 	// Set the global config
 	AppConfig = config

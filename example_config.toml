@@ -14,6 +14,6 @@ pass = ""
   user = ""
   pass = ""
   from = ""
-  addresses = ["test@example.com"]
+  to = ["test@example.com"]
   host = "127.0.0.1"
   port = "1025"

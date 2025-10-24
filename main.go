@@ -91,7 +91,7 @@ func main() {
 	}
 
 	// Send out email report
-	title := fmt.Sprintf("Sold Listings - %s", time.DateOnly)
+	title := fmt.Sprintf("Sold Listings - %s", time.Now().Format(time.DateOnly))
 	if err = SendEmailReport(title, updatedPeople); err != nil {
 		log.Fatalf("Failed to send email report: %v", err)
 	}

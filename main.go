@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 )
 
 func handleLookupResults(fub *FUB, results []int) {
@@ -90,7 +91,10 @@ func main() {
 	}
 
 	// Send out email report
-	panic("Add email report thingy")
+	title := fmt.Sprintf("Sold Listings - %s", time.DateOnly)
+	if err = SendEmailReport(title, updatedPeople); err != nil {
+		log.Fatalf("Failed to send email report: %v", err)
+	}
 
 	fmt.Print("Finished Program\n")
 }

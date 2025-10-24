@@ -43,12 +43,12 @@ type MLSConfig struct {
 
 // SMTPConfig represents SMTP-related configuration
 type SMTPConfig struct {
-	User string `toml:"user"`
-	Pass string `toml:"pass"`
-	From string `toml:"from"`
-	To   string `toml:"to"`
-	Host string `toml:"host"`
-	Port string `toml:"port"`
+	User string   `toml:"user"`
+	Pass string   `toml:"pass"`
+	From string   `toml:"from"`
+	To   []string `toml:"to"`
+	Host string   `toml:"host"`
+	Port string   `toml:"port"`
 }
 
 // Global configuration instance
@@ -67,12 +67,12 @@ func getDefaultConfig() Config {
 			Pass: "", // Required - will be empty in default config
 		},
 		SMTP: SMTPConfig{
-			User: "",          // Required - will be empty in default config
-			Pass: "",          // Required - will be empty in default config
-			From: "",          // Required - will be empty in default config
-			To:   "",          // Required - will be empty in default config
-			Host: "127.0.0.1", // Default value
-			Port: "1025",      // Default value
+			User: "",                           // Required - will be empty in default config
+			Pass: "",                           // Required - will be empty in default config
+			From: "",                           // Required - will be empty in default config
+			To:   []string{"test@example.com"}, // Required - will be empty in default config
+			Host: "127.0.0.1",                  // Default value
+			Port: "1025",                       // Default value
 		},
 	}
 }
@@ -149,7 +149,7 @@ func validateConfig(config *Config) error {
 	if config.SMTP.From == "" {
 		missingFields = append(missingFields, "smtp.from")
 	}
-	if config.SMTP.To == "" {
+	if len(config.SMTP.To) == 0 {
 		missingFields = append(missingFields, "smtp.to")
 	}
 

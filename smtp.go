@@ -14,7 +14,7 @@ func VerifySMTPAuth(host, port, username, password string) error {
 	// Connect to the SMTP server
 	client, err := smtp.Dial(addr)
 	if err != nil {
-		return fmt.Errorf("failed to connect to SMTP server: %w", err)
+		return fmt.Errorf("failed to get data writer: %w", err)
 	}
 	defer client.Close()
 

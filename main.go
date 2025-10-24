@@ -87,7 +87,7 @@ func main() {
 		handleLookupResults(&fub, haveSoldIds)
 
 		// Increment
-		offset += 50
+		offset += FUB_BUFFFER_AMOUNT
 	}
 
 	// Send out email report

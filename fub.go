@@ -34,9 +34,22 @@ type PersonAddress struct {
 	Country string `json:"country"`
 }
 
+type PersonEmail struct {
+	Value     string `json:"value"`
+	Type      string `json:"type"`
+	IsPrimary int    `json:"isPrimary"`
+	Status    string `json:"status"`
+}
+
+type PersonPhone struct {
+	Type   string `json:"type"`
+	Value  string `json:"value"`
+	Status string `json:"status"`
+}
+
 type Person struct {
-	Name      string          `json:"name"`
 	ID        int             `json:"id"`
+	Name      string          `json:"name"`
 	CreatedAt time.Time       `json:"created"`
 	Stage     string          `json:"stage"`
 	Addresses []PersonAddress `json:"addresses"`
@@ -86,7 +99,7 @@ func (f *FUB) newRequest(method string, url string, body io.Reader) (*http.Reque
 // Offset allows for recursion internally if response is paginated.
 // Internal function for GetPeople
 func (f *FUB) GetPeoplePage(offset int) (people []Person, isEnd bool, err error) {
-	url := "https://api.followupboss.com/v1/people?sort=created&limit=50&offset=" + strconv.Itoa(offset) + "&includeTrash=false&includeUnclaimed=true&fields=id%2Cname%2Ccreated%2Cstage%2Caddresses&smartListId=" + strconv.Itoa(f.sellerListId)
+	url := "https://api.followupboss.com/v1/people?sort=created&limit=" + strconv.Itoa(FUB_BUFFFER_AMOUNT) + "&offset=" + strconv.Itoa(offset) + "&includeTrash=false&includeUnclaimed=true&fields=id%2Cname%2Ccreated%2Cstage%2Caddresses&smartListId=" + strconv.Itoa(f.sellerListId)
 
 	req, err := f.newRequest("GET", url, nil)
 	if err != nil {

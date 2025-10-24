@@ -20,6 +20,7 @@ const MLS_SEARCH_HISTORY_URL_BASE = "https://cr.flexmls.com/cgi-bin/mainmenu.cgi
 // FollowUpBoss
 const FUB_SYSTEM_HEADER = "ForSaleReport"                 // X-System
 const FUB_SYSTEM_KEY = "e50150b78203e92245f6407fdea50dab" // X-System-Key
+const FUB_BUFFFER_AMOUNT = 100                            // How many to get per request
 
 // Config represents the application configuration
 type Config struct {
@@ -152,6 +153,12 @@ func validateConfig(config *Config) error {
 	if len(config.SMTP.To) == 0 {
 		missingFields = append(missingFields, "smtp.to")
 	}
+
+	// Note: cert is optional, so we don't validate it as required
+	// If you want to make it required, uncomment the following:
+	// if config.SMTP.Cert == "" {
+	//     missingFields = append(missingFields, "smtp.cert")
+	// }
 
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing required configuration fields: %s", strings.Join(missingFields, ", "))

@@ -10,7 +10,7 @@ To setup on linux:
 
 - Build the package
   `go build .`
-- Move the built binary to /bin
+- Move the built binary to
   `/bin/for-sale-report`
 - Move .service and .timer files to
   `/etc/systemd/system/`

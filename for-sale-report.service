@@ -1,0 +1,6 @@
+[Unit]
+Description=Run the For Sale Report Application
+
+[Service]
+Type=oneshot
+ExecStart=/bin/for-sale-report

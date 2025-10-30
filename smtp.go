@@ -45,6 +45,7 @@ func buildHTMLBody(people []Person) string {
 	var sb strings.Builder
 	sb.WriteString(`<html><body>`)
 	sb.WriteString(`<h2>Listings Report</h2>`)
+	sb.WriteString(`<p>The following individuals have been marked as expired leads in FUB. If no individuals are listed below, then all leads are still valid.</p>`)
 	sb.WriteString(`<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">`)
 	sb.WriteString(`<tr style="background-color: #dddddd;"><th>#</th><th>Name</th><th>ID</th><th>Addresses</th></tr>`)
 

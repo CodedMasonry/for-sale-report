@@ -31,9 +31,9 @@ type Config struct {
 
 // FUBConfig represents FUB-related configuration
 type FUBConfig struct {
-	APIKey            string   `toml:"api_key"`
-	SellerSmartlistID string   `toml:"seller_smartlist_id"`
-	ExcludedStages    []string `toml:"excluded_stages"`
+	APIKey             string   `toml:"api_key"`
+	SellerSmartlistIDs []string `toml:"seller_smartlist_ids"`
+	ExcludedStages     []string `toml:"excluded_stages"`
 }
 
 // MLSConfig represents MLS-related configuration
@@ -59,9 +59,9 @@ var AppConfig *Config
 func getDefaultConfig() Config {
 	return Config{
 		FUB: FUBConfig{
-			APIKey:            "",                           // Required - will be empty in default config
-			SellerSmartlistID: "",                           // Required - will be empty in default config
-			ExcludedStages:    []string{"stage1", "stage2"}, // Example default stages
+			APIKey:             "",                           // Required - will be empty in default config
+			SellerSmartlistIDs: []string{"123", "456"},       // Example default IDs
+			ExcludedStages:     []string{"stage1", "stage2"}, // Example default stages
 		},
 		MLS: MLSConfig{
 			User: "", // Required - will be empty in default config
@@ -125,8 +125,8 @@ func validateConfig(config *Config) error {
 	if config.FUB.APIKey == "" {
 		missingFields = append(missingFields, "fub.api_key")
 	}
-	if config.FUB.SellerSmartlistID == "" {
-		missingFields = append(missingFields, "fub.seller_smartlist_id")
+	if len(config.FUB.SellerSmartlistIDs) == 0 {
+		missingFields = append(missingFields, "fub.seller_smartlist_ids")
 	}
 	if len(config.FUB.ExcludedStages) == 0 {
 		missingFields = append(missingFields, "fub.excluded_stages")
@@ -169,6 +169,11 @@ func validateConfig(config *Config) error {
 
 // populateGlobalConfig sets the global AppConfig from the loaded config
 func populateGlobalConfig(config *Config) {
+	// Trim whitespace from seller smartlist IDs
+	for i, id := range config.FUB.SellerSmartlistIDs {
+		config.FUB.SellerSmartlistIDs[i] = strings.TrimSpace(id)
+	}
+
 	// Trim whitespace from excluded stages
 	for i, stage := range config.FUB.ExcludedStages {
 		config.FUB.ExcludedStages[i] = strings.TrimSpace(stage)

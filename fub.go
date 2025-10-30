@@ -14,9 +14,9 @@ import (
 )
 
 type FUB struct {
-	token        string
-	sellerListId int
-	client       *http.Client
+	token         string
+	sellerListIds []int
+	client        *http.Client
 }
 
 // Only next is cared about because offset context is handled internally. Communicates end of list
@@ -60,17 +60,31 @@ type PeopleResponse struct {
 	People   []Person       `json:"people"`
 }
 
-func NewFUB(token string, smartListId string) FUB {
+func NewFUB(token string, smartListIds []string) FUB {
 	client := &http.Client{}
 
-	sellerListId, err := strconv.Atoi(smartListId)
-	if err != nil {
-		log.Panic(err)
+	// Convert string IDs to integers
+	sellerListIds := make([]int, 0, len(smartListIds))
+
+	for _, idStr := range smartListIds {
+		idStr = strings.TrimSpace(idStr)
+		if idStr == "" {
+			continue
+		}
+		sellerListId, err := strconv.Atoi(idStr)
+		if err != nil {
+			log.Panic(err)
+		}
+		sellerListIds = append(sellerListIds, sellerListId)
+	}
+
+	if len(sellerListIds) == 0 {
+		log.Panic("No valid smart list IDs provided")
 	}
 
 	return FUB{
 		token,
-		sellerListId,
+		sellerListIds,
 		client,
 	}
 }
@@ -98,8 +112,8 @@ func (f *FUB) newRequest(method string, url string, body io.Reader) (*http.Reque
 
 // Offset allows for recursion internally if response is paginated.
 // Internal function for GetPeople
-func (f *FUB) GetPeoplePage(offset int) (people []Person, isEnd bool, err error) {
-	url := "https://api.followupboss.com/v1/people?sort=created&limit=" + strconv.Itoa(FUB_BUFFFER_AMOUNT) + "&offset=" + strconv.Itoa(offset) + "&includeTrash=false&includeUnclaimed=true&fields=id%2Cname%2Ccreated%2Cstage%2Caddresses&smartListId=" + strconv.Itoa(f.sellerListId)
+func (f *FUB) GetPeoplePage(smartListId int, offset int) (people []Person, isEnd bool, err error) {
+	url := "https://api.followupboss.com/v1/people?sort=created&limit=" + strconv.Itoa(FUB_BUFFFER_AMOUNT) + "&offset=" + strconv.Itoa(offset) + "&includeTrash=false&includeUnclaimed=true&fields=id%2Cname%2Ccreated%2Cstage%2Caddresses&smartListId=" + strconv.Itoa(smartListId)
 
 	req, err := f.newRequest("GET", url, nil)
 	if err != nil {
@@ -119,36 +133,12 @@ func (f *FUB) GetPeoplePage(offset int) (people []Person, isEnd bool, err error)
 	}
 
 	people = jsonRes.People
-	log.Printf("[INFO] %v / %v people", offset, jsonRes.Metadata.Total)
+	log.Printf("[INFO] Smart List %v: %v / %v people", smartListId, offset, jsonRes.Metadata.Total)
 	isEnd = jsonRes.Metadata.Next == nil
 	return people, isEnd, nil
 }
 
-// internal version of [SetPersonHasSold] for handling zillow tag
-func (f *FUB) setZillowPersonHasSold(id int) error {
-	url := "https://api.followupboss.com/v1/people/" + strconv.Itoa(id) + "?mergeTags=true"
-	payload := strings.NewReader("{\"tags\":[\"Expired Lead\"]}")
-
-	req, err := f.newRequest("PUT", url, payload)
-	if err != nil {
-		return err
-	}
-
-	res, err := f.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode == 200 {
-		return nil
-	}
-	// If neither original or zillow tag works, bigger problems
-	body, err := io.ReadAll(res.Body)
-	return fmt.Errorf("%v: Failed to set tag %v", id, body)
-}
-
-// Sets [id]'s stage to [FUBExpiredStageName]
+// Add [Expired Lead] to [id]'s tags
 func (f *FUB) SetPersonHasSold(id int) error {
 	url := "https://api.followupboss.com/v1/people/" + strconv.Itoa(id) + "?mergeTags=true"
 	payload := strings.NewReader("{\"tags\":[\"Expired Lead\"]}")
@@ -173,12 +163,8 @@ func (f *FUB) SetPersonHasSold(id int) error {
 		log.Fatal(err)
 	}
 
-	if strings.Contains(string(body), "Zillow") {
-		log.Printf("%v: Trying to handle Zillow Lead", id)
-		return f.setZillowPersonHasSold(id)
-	} else {
-		return fmt.Errorf("%v: Failed to set tag - %v", id, body)
-	}
+	return fmt.Errorf("%v: Failed to set tag - %v", id, body)
+
 }
 
 func (fub *FUB) PersonIsExcluded(person *Person) bool {

@@ -2,13 +2,13 @@
 # Fill in the required fields below and customize as needed
 
 [fub]
-api_key = ""
-seller_smartlist_id = ""
-excluded_stages = ["stage1", "stage2"]
+  api_key = ""
+  seller_smartlist_ids = ["123", "456"]
+  excluded_stages = ["stage1", "stage2"]
 
 [mls]
-user = ""
-pass = ""
+  user = ""
+  pass = ""
 
 [smtp]
   user = ""
